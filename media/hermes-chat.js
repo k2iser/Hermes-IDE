@@ -43,6 +43,7 @@
         <header class="header">
           <div class="brand"><img src="${logo}" alt="Hermes"/><span>${escapeText(state.workspace || 'Hermes IDE')}</span></div>
           <div class="actions">
+            <button class="iconBtn" data-action="terminal" title="Abrir Hermes en terminal">Terminal</button>
             <button class="iconBtn" data-action="model" title="Instalar/cambiar modelo">Modelos</button>
             <button class="iconBtn" data-action="clear" title="Nuevo chat">⊕</button>
             <button class="iconBtn" data-action="settings" title="Ajustes">⚙</button>
@@ -57,6 +58,7 @@
             <div class="toolbar">
               <div class="left">
                 <button class="toolBtn" data-action="attach" title="Adjuntar archivos locales">＋</button>
+                <button class="toolBtn" data-action="mention" title="Insertar referencia @">@</button>
                 <button class="toolBtn" data-action="slash" title="Comandos">/</button>
                 <label title="Incluye el texto seleccionado en el editor"><input id="includeSelection" type="checkbox"/> <span>Selección</span></label>
               </div>
@@ -214,6 +216,8 @@
       if (action === 'clear') post('clear');
       if (action === 'settings') post('openSettings');
       if (action === 'model') post('pickModel');
+      if (action === 'terminal') post('openTerminal');
+      if (action === 'mention') post('insertAtMention');
       if (action === 'attach') document.getElementById('fileInput').click();
       if (action === 'slash') {
         const input = document.getElementById('input');
@@ -307,10 +311,29 @@
     if (menu) menu.classList.remove('visible');
   }
 
+  function insertTextAtCursor(text) {
+    const input = document.getElementById('input');
+    if (!input) return;
+    const start = input.selectionStart || input.value.length;
+    const end = input.selectionEnd || start;
+    input.value = `${input.value.slice(0, start)}${text}${input.value.slice(end)}`;
+    const next = start + text.length;
+    input.focus();
+    input.setSelectionRange(next, next);
+  }
+
   window.addEventListener('message', (event) => {
     if (event.data?.type === 'state') {
       state = { ...state, ...event.data };
       render();
+      return;
+    }
+    if (event.data?.type === 'focusInput') {
+      document.getElementById('input')?.focus();
+      return;
+    }
+    if (event.data?.type === 'insertText') {
+      insertTextAtCursor(event.data.text || '');
     }
   });
 

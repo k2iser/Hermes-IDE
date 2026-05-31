@@ -2,7 +2,7 @@
   "name": "hermes-chat-vscode",
   "displayName": "Hermes IDE",
   "description": "Chat with Hermes Agent from VS Code or Cursor. MVP extension that sends prompts, selected code and pasted/dropped files to the Hermes CLI.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "hermes-agent",
   "license": "MIT",
   "repository": {
@@ -24,6 +24,12 @@
     "onCommand:hermesChat.stop",
     "onCommand:hermesChat.status",
     "onCommand:hermesChat.commands",
+    "onCommand:hermesChat.pickModel",
+    "onCommand:hermesChat.openTerminal",
+    "onCommand:hermesChat.focusInput",
+    "onCommand:hermesChat.insertAtMention",
+    "onCommand:hermesChat.acceptProposedDiff",
+    "onCommand:hermesChat.rejectProposedDiff",
     "onView:hermesIde.chatView"
   ],
   "main": "./dist/extension.js",
@@ -90,6 +96,31 @@
         "category": "Hermes IDE"
       },
       {
+        "command": "hermesChat.openTerminal",
+        "title": "Open Hermes in Terminal",
+        "category": "Hermes IDE"
+      },
+      {
+        "command": "hermesChat.focusInput",
+        "title": "Focus Input",
+        "category": "Hermes IDE"
+      },
+      {
+        "command": "hermesChat.insertAtMention",
+        "title": "Insert @-Mention Reference",
+        "category": "Hermes IDE"
+      },
+      {
+        "command": "hermesChat.acceptProposedDiff",
+        "title": "Accept Proposed Changes",
+        "category": "Hermes IDE"
+      },
+      {
+        "command": "hermesChat.rejectProposedDiff",
+        "title": "Reject Proposed Changes",
+        "category": "Hermes IDE"
+      },
+      {
         "command": "hermesChat.newChat",
         "title": "New Chat",
         "category": "Hermes IDE"
@@ -142,20 +173,37 @@
       "view/title": [
         {
           "command": "hermesChat.newChat",
-          "when": "view == hermesIde.chatView",
+          "when": "view == hermesIde.chatView || view == hermesIde.secondaryChatView",
           "group": "navigation@1"
         },
         {
           "command": "hermesChat.stop",
-          "when": "view == hermesIde.chatView",
+          "when": "view == hermesIde.chatView || view == hermesIde.secondaryChatView",
           "group": "navigation@2"
         },
         {
           "command": "hermesChat.commands",
-          "when": "view == hermesIde.chatView",
+          "when": "view == hermesIde.chatView || view == hermesIde.secondaryChatView",
           "group": "navigation@3"
+        },
+        {
+          "command": "hermesChat.openTerminal",
+          "when": "view == hermesIde.chatView || view == hermesIde.secondaryChatView",
+          "group": "navigation@4"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "hermesChat.insertAtMention",
+          "group": "navigation@99"
         }
       ]
+    }
+  },
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false,
+      "description": "Hermes IDE can run tools and modify files, so trusted workspaces are required."
     }
   },
   "scripts": {

@@ -24,7 +24,7 @@ interface AttachmentPayload {
 }
 
 interface InboundMessage {
-  type: 'ready' | 'send' | 'clear' | 'stop' | 'pickModel' | 'openSettings' | 'setAutoMode' | 'log' | 'error';
+  type: 'ready' | 'send' | 'clear' | 'stop' | 'pickModel' | 'openSettings' | 'setAutoMode' | 'openTerminal' | 'insertAtMention' | 'log' | 'error';
   text?: string;
   detail?: string;
   attachments?: AttachmentPayload[];
@@ -93,7 +93,38 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('hermesChat.newChat', () => activeSession?.clear()),
     vscode.commands.registerCommand('hermesChat.stop', () => activeSession?.stop()),
     vscode.commands.registerCommand('hermesChat.showLogs', () => output.show()),
-    vscode.commands.registerCommand('hermesChat.pickModel', () => activeSession?.pickModel())
+    vscode.commands.registerCommand('hermesChat.pickModel', async () => {
+      await ensureSession(context, output);
+      await activeSession?.pickModel();
+    }),
+    vscode.commands.registerCommand('hermesChat.openTerminal', () => openHermesTerminal()),
+    vscode.commands.registerCommand('hermesChat.focusInput', async () => {
+      await ensureSession(context, output);
+      activeSession?.focusInput();
+    }),
+    vscode.commands.registerCommand('hermesChat.insertAtMention', async () => {
+      await ensureSession(context, output);
+      const mention = await buildAtMention();
+      if (mention) {
+        activeSession?.insertText(mention);
+      }
+    }),
+    vscode.commands.registerCommand('hermesChat.acceptProposedDiff', () => {
+      vscode.window.showInformationMessage('Hermes IDE: accept/reject diff flow is planned. Use Git diff for now.');
+    }),
+    vscode.commands.registerCommand('hermesChat.rejectProposedDiff', () => {
+      vscode.window.showInformationMessage('Hermes IDE: accept/reject diff flow is planned. Use Git diff for now.');
+    }),
+    vscode.commands.registerCommand('hermesChat.status', async () => {
+      await ensureSession(context, output);
+      activeSession?.insertText('/status');
+      activeSession?.focusInput();
+    }),
+    vscode.commands.registerCommand('hermesChat.commands', async () => {
+      await ensureSession(context, output);
+      activeSession?.insertText('/');
+      activeSession?.focusInput();
+    })
   );
 
   output.appendLine('Hermes IDE providers registered');
@@ -101,6 +132,44 @@ export function activate(context: vscode.ExtensionContext): void {
 
 export function deactivate(): void {
   activeSession?.stop();
+}
+
+async function ensureSession(context: vscode.ExtensionContext, output: vscode.OutputChannel): Promise<void> {
+  if (activeSession) {
+    return;
+  }
+  await vscode.commands.executeCommand(SECONDARY_CONTAINER);
+  await vscode.commands.executeCommand(`${SECONDARY_VIEW_ID}.focus`);
+  if (!activeSession) {
+    openPanel(context, output);
+  }
+}
+
+function openHermesTerminal(): void {
+  const executable = getConfig().get<string>('executable', 'hermes');
+  const terminal = vscode.window.createTerminal({ name: 'Hermes IDE', cwd: getWorkspaceCwd() });
+  terminal.show();
+  terminal.sendText(`${executable}`);
+}
+
+async function buildAtMention(): Promise<string | undefined> {
+  const active = vscode.window.activeTextEditor;
+  const options: vscode.QuickPickItem[] = [];
+  if (active) {
+    const relative = vscode.workspace.asRelativePath(active.document.uri, false);
+    options.push({ label: `@${relative}`, description: 'Archivo activo' });
+    if (!active.selection.isEmpty) {
+      options.push({ label: `@${relative}:${active.selection.start.line + 1}-${active.selection.end.line + 1}`, description: 'Selección actual' });
+    }
+  }
+  options.push({ label: '@workspace', description: 'Workspace completo / contexto del repo' });
+  options.push({ label: '@terminal', description: 'Pedir contexto de terminal/logs' });
+  options.push({ label: '@git', description: 'Pedir contexto Git/diff/status' });
+  const picked = await vscode.window.showQuickPick(options, {
+    title: 'Hermes IDE · insertar referencia @',
+    placeHolder: 'Elige una referencia para insertar en el chat'
+  });
+  return picked?.label ? `${picked.label} ` : undefined;
 }
 
 function openPanel(context: vscode.ExtensionContext, output: vscode.OutputChannel): void {
@@ -177,6 +246,14 @@ class HermesSession {
     this.postState();
   }
 
+  focusInput(): void {
+    this.host.webview.postMessage({ type: 'focusInput' });
+  }
+
+  insertText(text: string): void {
+    this.host.webview.postMessage({ type: 'insertText', text });
+  }
+
   async pickModel(): Promise<void> {
     const selected = await vscode.window.showQuickPick(MODEL_OPTIONS, {
       title: 'Hermes IDE · instalar/cambiar modelo',
@@ -228,6 +305,17 @@ class HermesSession {
     }
     if (message.type === 'pickModel') {
       await this.pickModel();
+      return;
+    }
+    if (message.type === 'openTerminal') {
+      openHermesTerminal();
+      return;
+    }
+    if (message.type === 'insertAtMention') {
+      const mention = await buildAtMention();
+      if (mention) {
+        this.insertText(mention);
+      }
       return;
     }
     if (message.type === 'setAutoMode') {
