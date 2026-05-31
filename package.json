@@ -2,7 +2,7 @@
   "name": "hermes-chat-vscode",
   "displayName": "Hermes IDE",
   "description": "Chat with Hermes Agent from VS Code or Cursor. MVP extension that sends prompts, selected code and pasted/dropped files to the Hermes CLI.",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "publisher": "hermes-agent",
   "license": "MIT",
   "repository": {
@@ -18,6 +18,7 @@
   "activationEvents": [
     "onCommand:hermesChat.open",
     "onCommand:hermesChat.openSidebar",
+    "onCommand:hermesChat.openSecondarySidebar",
     "onCommand:hermesChat.newChat",
     "onCommand:hermesChat.stop",
     "onCommand:hermesChat.status",
@@ -26,8 +27,7 @@
   ],
   "main": "./dist/extension.js",
   "extensionKind": [
-    "workspace",
-    "ui"
+    "workspace"
   ],
   "contributes": {
     "viewsContainers": {
@@ -37,12 +37,26 @@
           "title": "Hermes IDE",
           "icon": "media/hermes-h.svg"
         }
+      ],
+      "secondarySidebar": [
+        {
+          "id": "hermesIdeSecondary",
+          "title": "Hermes IDE",
+          "icon": "media/hermes-h.svg"
+        }
       ]
     },
     "views": {
       "hermesIde": [
         {
           "id": "hermesIde.chatView",
+          "name": "Chat",
+          "type": "webview"
+        }
+      ],
+      "hermesIdeSecondary": [
+        {
+          "id": "hermesIde.secondaryChatView",
           "name": "Chat",
           "type": "webview"
         }
@@ -57,6 +71,11 @@
       {
         "command": "hermesChat.openSidebar",
         "title": "Open Sidebar Chat",
+        "category": "Hermes IDE"
+      },
+      {
+        "command": "hermesChat.openSecondarySidebar",
+        "title": "Open Right Sidebar Chat",
         "category": "Hermes IDE"
       },
       {

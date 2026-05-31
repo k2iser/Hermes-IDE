@@ -5,7 +5,9 @@ import * as fs from 'fs/promises';
 import * as crypto from 'crypto';
 
 const CHAT_VIEW_ID = 'hermesIde.chatView';
+const SECONDARY_CHAT_VIEW_ID = 'hermesIde.secondaryChatView';
 const VIEW_CONTAINER_ID = 'workbench.view.extension.hermesIde';
+const SECONDARY_VIEW_CONTAINER_ID = 'workbench.view.extension.hermesIdeSecondary';
 const FULL_PANEL_VIEW_TYPE = 'hermesIde.fullChat';
 
 interface ChatMessage {
@@ -22,12 +24,14 @@ interface AttachmentPayload {
 }
 
 interface WebviewInboundMessage {
-  type: 'ready' | 'send' | 'clear' | 'stop' | 'insertCommand' | 'openSettings' | 'pickModel' | 'setAutoMode';
+  type: 'ready' | 'send' | 'clear' | 'stop' | 'insertCommand' | 'openSettings' | 'pickModel' | 'setAutoMode' | 'webviewLog' | 'webviewError';
   text?: string;
   attachments?: AttachmentPayload[];
   includeSelection?: boolean;
   command?: string;
   enabled?: boolean;
+  level?: string;
+  detail?: string;
 }
 
 interface WebviewHost {
@@ -86,6 +90,9 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.window.registerWebviewViewProvider(CHAT_VIEW_ID, provider, {
       webviewOptions: { retainContextWhenHidden: true }
     }),
+    vscode.window.registerWebviewViewProvider(SECONDARY_CHAT_VIEW_ID, provider, {
+      webviewOptions: { retainContextWhenHidden: true }
+    }),
     vscode.commands.registerCommand('hermesChat.open', async () => {
       output.appendLine('Opening Hermes IDE full chat panel');
       openFullChatPanel(context.extensionUri);
@@ -93,6 +100,10 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('hermesChat.openSidebar', async () => {
       output.appendLine('Opening Hermes IDE sidebar chat view');
       await revealHermesView();
+    }),
+    vscode.commands.registerCommand('hermesChat.openSecondarySidebar', async () => {
+      output.appendLine('Opening Hermes IDE right sidebar chat view');
+      await revealHermesSecondaryView();
     }),
     vscode.commands.registerCommand('hermesChat.newChat', async () => {
       openFullChatPanel(context.extensionUri);
@@ -111,7 +122,7 @@ export function activate(context: vscode.ExtensionContext): void {
     })
   );
 
-  output.appendLine(`Registered WebviewViewProvider for ${CHAT_VIEW_ID}`);
+  output.appendLine(`Registered WebviewViewProvider for ${CHAT_VIEW_ID} and ${SECONDARY_CHAT_VIEW_ID}`);
 }
 
 export function deactivate(): void {
@@ -121,6 +132,11 @@ export function deactivate(): void {
 async function revealHermesView(): Promise<void> {
   await vscode.commands.executeCommand(VIEW_CONTAINER_ID);
   await vscode.commands.executeCommand(`${CHAT_VIEW_ID}.focus`);
+}
+
+async function revealHermesSecondaryView(): Promise<void> {
+  await vscode.commands.executeCommand(SECONDARY_VIEW_CONTAINER_ID);
+  await vscode.commands.executeCommand(`${SECONDARY_CHAT_VIEW_ID}.focus`);
 }
 
 function openFullChatPanel(extensionUri: vscode.Uri): void {
@@ -135,6 +151,7 @@ function openFullChatPanel(extensionUri: vscode.Uri): void {
     vscode.ViewColumn.Active,
     {
       enableScripts: true,
+      enableForms: true,
       retainContextWhenHidden: true,
       localResourceRoots: [extensionUri]
     }
@@ -157,10 +174,11 @@ class HermesChatViewProvider implements vscode.WebviewViewProvider {
     this.output.appendLine(`Resolving WebviewView ${CHAT_VIEW_ID}`);
     webviewView.webview.options = {
       enableScripts: true,
+      enableForms: true,
       localResourceRoots: [this.extensionUri]
     };
 
-    activeSession = new HermesChatSession(webviewView, this.extensionUri, false);
+    activeSession = new HermesChatSession(webviewView, this.extensionUri, false, this.output);
   }
 }
 
@@ -173,7 +191,8 @@ class HermesChatSession {
   constructor(
     private readonly host: WebviewHost,
     private readonly extensionUri: vscode.Uri,
-    private readonly fullSize: boolean
+    private readonly fullSize: boolean,
+    private readonly output?: vscode.OutputChannel
   ) {
     this.host.webview.html = this.getHtml();
     this.host.webview.onDidReceiveMessage(async (message: WebviewInboundMessage) => this.handleMessage(message));
@@ -205,7 +224,16 @@ class HermesChatSession {
 
   private async handleMessage(message: WebviewInboundMessage): Promise<void> {
     if (message.type === 'ready') {
+      this.output?.appendLine('Webview ready');
       this.postState();
+      return;
+    }
+
+    if (message.type === 'webviewLog' || message.type === 'webviewError') {
+      this.output?.appendLine(`[${message.type}] ${message.text ?? ''}${message.detail ? ` ${message.detail}` : ''}`);
+      if (message.type === 'webviewError') {
+        vscode.window.showWarningMessage(`Hermes IDE webview error: ${message.text ?? message.detail ?? 'unknown error'}`);
+      }
       return;
     }
 
@@ -580,11 +608,15 @@ class HermesChatSession {
           </div>
         </div>
       </div>
-      <input id="fileInput" type="file" multiple style="display:none" />
+      <input id="fileInput" type="file" multiple style="position:absolute;left:-10000px;top:auto;width:1px;height:1px;opacity:0" />
     </section>
   </div>
   <script nonce="${nonce}">
     const vscode = acquireVsCodeApi();
+    const postLog = (text, detail) => vscode.postMessage({ type: 'webviewLog', text, detail: detail ? String(detail) : '' });
+    const postError = (text, detail) => vscode.postMessage({ type: 'webviewError', text, detail: detail ? String(detail && (detail.stack || detail.message || detail)) : '' });
+    window.addEventListener('error', (event) => postError(event.message || 'webview script error', event.error));
+    window.addEventListener('unhandledrejection', (event) => postError('unhandled promise rejection', event.reason));
     const appEl = document.getElementById('app');
     const messagesEl = document.getElementById('messages');
     const messagesInnerEl = document.getElementById('messagesInner');
