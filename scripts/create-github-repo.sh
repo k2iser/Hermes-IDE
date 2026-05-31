@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO_NAME="${1:-hermes-chat-vscode}"
+REPO_NAME="${1:-Hermes-IDE}"
 DESCRIPTION="VS Code/Cursor extension to chat with Hermes Agent from an IDE panel, with selected code and pasted/dropped file support."
 
 cd "$(dirname "$0")/.."

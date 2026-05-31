@@ -1,13 +1,13 @@
 {
   "name": "hermes-chat-vscode",
-  "displayName": "Hermes Chat",
+  "displayName": "Hermes IDE",
   "description": "Chat with Hermes Agent from VS Code or Cursor. MVP extension that sends prompts, selected code and pasted/dropped files to the Hermes CLI.",
   "version": "0.0.1",
   "publisher": "hermes-agent",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/hermes-agent/hermes-chat-vscode"
+    "url": "https://github.com/k2iser/Hermes-IDE"
   },
   "engines": {
     "vscode": "^1.90.0"

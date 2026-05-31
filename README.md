@@ -1,4 +1,4 @@
-# Hermes Chat for VS Code / Cursor
+# Hermes IDE for VS Code / Cursor
 
 MVP extension to chat with [Hermes Agent](https://github.com/NousResearch/hermes-agent) from VS Code or Cursor, without living inside a raw terminal.
 
