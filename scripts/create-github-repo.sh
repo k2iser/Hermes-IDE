@@ -25,10 +25,13 @@ gh repo create "$REPO_NAME" \
   --remote origin \
   --push
 
-gh repo edit "$REPO_NAME" \
+OWNER="$(gh api user --jq '.login')"
+FULL_REPO="$OWNER/$REPO_NAME"
+
+gh repo edit "$FULL_REPO" \
   --enable-issues=true \
   --enable-wiki=false \
   --add-topic hermes-agent,vscode,cursor,ai-agent,developer-tools,typescript
 
 echo "Repository created and pushed:"
-gh repo view "$REPO_NAME" --web
+gh repo view "$FULL_REPO" --web
