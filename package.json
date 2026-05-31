@@ -2,7 +2,7 @@
   "name": "hermes-chat-vscode",
   "displayName": "Hermes IDE",
   "description": "Chat with Hermes Agent from VS Code or Cursor. MVP extension that sends prompts, selected code and pasted/dropped files to the Hermes CLI.",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "publisher": "hermes-agent",
   "license": "MIT",
   "repository": {
@@ -16,13 +16,14 @@
     "Other"
   ],
   "activationEvents": [
+    "*",
     "onCommand:hermesChat.open",
     "onView:hermesIde.chatView"
   ],
   "main": "./dist/extension.js",
   "extensionKind": [
-    "workspace",
-    "ui"
+    "ui",
+    "workspace"
   ],
   "contributes": {
     "viewsContainers": {

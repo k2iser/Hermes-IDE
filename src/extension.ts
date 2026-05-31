@@ -31,16 +31,29 @@ interface WebviewHost {
 }
 
 export function activate(context: vscode.ExtensionContext): void {
-  const provider = new HermesChatViewProvider(context.extensionUri);
+  const output = vscode.window.createOutputChannel('Hermes IDE');
+  output.appendLine(`Activating Hermes IDE from ${context.extensionUri.toString()}`);
 
-  context.subscriptions.push(
-    vscode.window.registerWebviewViewProvider(CHAT_VIEW_ID, provider, {
-      webviewOptions: { retainContextWhenHidden: true }
-    })
-  );
+  const provider = new HermesChatViewProvider(context.extensionUri, output);
+
+  try {
+    context.subscriptions.push(
+      output,
+      vscode.window.registerWebviewViewProvider(CHAT_VIEW_ID, provider, {
+        webviewOptions: { retainContextWhenHidden: true }
+      })
+    );
+    output.appendLine(`Registered WebviewViewProvider for ${CHAT_VIEW_ID}`);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    output.appendLine(`Failed to register WebviewViewProvider: ${message}`);
+    vscode.window.showErrorMessage(`Hermes IDE failed to register chat view: ${message}`);
+  }
 
   context.subscriptions.push(
     vscode.commands.registerCommand('hermesChat.open', async () => {
+      output.appendLine('Opening Hermes IDE chat view');
+      await vscode.commands.executeCommand('workbench.view.extension.hermesIde');
       await vscode.commands.executeCommand(`${CHAT_VIEW_ID}.focus`);
     })
   );
@@ -51,9 +64,13 @@ export function deactivate(): void {}
 class HermesChatViewProvider implements vscode.WebviewViewProvider {
   private session: HermesChatSession | undefined;
 
-  constructor(private readonly extensionUri: vscode.Uri) {}
+  constructor(
+    private readonly extensionUri: vscode.Uri,
+    private readonly output: vscode.OutputChannel
+  ) {}
 
   resolveWebviewView(webviewView: vscode.WebviewView): void {
+    this.output.appendLine(`Resolving WebviewView ${CHAT_VIEW_ID}`);
     webviewView.webview.options = {
       enableScripts: true,
       localResourceRoots: [this.extensionUri]
