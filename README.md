@@ -6,8 +6,9 @@ The goal is to make Hermes usable for people who prefer an IDE workflow: chat pa
 
 ## MVP features
 
-- `Hermes Chat: Open` command.
-- Webview chat panel inside VS Code/Cursor.
+- Hermes IDE Activity Bar icon with a dedicated sidebar chat view.
+- `Hermes IDE: Open Chat` command.
+- Webview chat inside VS Code/Cursor.
 - Sends prompts to `hermes chat -q` using the current workspace as cwd.
 - Optionally includes the active editor selection.
 - Supports paste/drop of files and images.
@@ -23,11 +24,13 @@ The goal is to make Hermes usable for people who prefer an IDE workflow: chat pa
 ## Usage
 
 1. Open a project folder in VS Code or Cursor.
-2. Run `Hermes Chat: Open` from the Command Palette.
+2. Click the Hermes IDE icon in the Activity Bar, or run `Hermes IDE: Open Chat` from the Command Palette.
 3. Type a prompt.
 4. Optional: select code in the active editor and keep `include editor selection` checked.
 5. Optional: paste screenshots/files or drag files into the drop area.
 6. Press `Ctrl+Enter` / `Cmd+Enter` or click `Send to Hermes`.
+
+If the Activity Bar icon does not appear after installing a VSIX, uninstall the old extension, install the latest versioned VSIX, and run `Developer: Reload Window`.
 
 ## Settings
 
