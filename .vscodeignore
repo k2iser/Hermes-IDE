@@ -1,0 +1,8 @@
+src/**
+*.map
+tsconfig.json
+docs-plan.md
+node_modules/**
+.hermes-chat/**
+.vscode-test/**
+*.vsix

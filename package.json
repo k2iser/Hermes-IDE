@@ -1,0 +1,72 @@
+{
+  "name": "hermes-chat-vscode",
+  "displayName": "Hermes Chat",
+  "description": "Chat with Hermes Agent from VS Code or Cursor. MVP extension that sends prompts, selected code and pasted/dropped files to the Hermes CLI.",
+  "version": "0.0.1",
+  "publisher": "hermes-agent",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hermes-agent/hermes-chat-vscode"
+  },
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:hermesChat.open"
+  ],
+  "main": "./dist/extension.js",
+  "extensionKind": [
+    "workspace"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "hermesChat.open",
+        "title": "Hermes Chat: Open"
+      }
+    ],
+    "configuration": {
+      "title": "Hermes Chat",
+      "properties": {
+        "hermesChat.executable": {
+          "type": "string",
+          "default": "hermes",
+          "description": "Hermes CLI executable path. Use 'hermes' if it is available on PATH."
+        },
+        "hermesChat.extraArgs": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "description": "Extra arguments passed before 'chat -q', for example ['--profile', 'dev']."
+        },
+        "hermesChat.includeSelectionByDefault": {
+          "type": "boolean",
+          "default": true,
+          "description": "Include the active editor selection in each prompt by default."
+        },
+        "hermesChat.maxFileBytes": {
+          "type": "number",
+          "default": 5242880,
+          "description": "Maximum pasted/dropped attachment size saved by the extension, in bytes."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1",
+    "@types/vscode": "^1.90.0",
+    "@vscode/vsce": "^3.9.1",
+    "typescript": "^6.0.3"
+  }
+}
