@@ -17,6 +17,21 @@ interface ChatMessage {
   createdAt: number;
 }
 
+interface StoredChatSession {
+  id: string;
+  title: string;
+  createdAt: number;
+  updatedAt: number;
+  messages: ChatMessage[];
+}
+
+interface SessionSummary {
+  id: string;
+  title: string;
+  updatedAt: number;
+  messageCount: number;
+}
+
 interface AttachmentPayload {
   name: string;
   mime: string;
@@ -24,9 +39,10 @@ interface AttachmentPayload {
 }
 
 interface InboundMessage {
-  type: 'ready' | 'send' | 'clear' | 'stop' | 'pickModel' | 'openSettings' | 'setAutoMode' | 'openTerminal' | 'insertAtMention' | 'log' | 'error';
+  type: 'ready' | 'send' | 'clear' | 'stop' | 'pickModel' | 'openSettings' | 'setAutoMode' | 'openTerminal' | 'insertAtMention' | 'openSession' | 'deleteSession' | 'log' | 'error';
   text?: string;
   detail?: string;
+  sessionId?: string;
   attachments?: AttachmentPayload[];
   includeSelection?: boolean;
   enabled?: boolean;
@@ -90,7 +106,14 @@ export function activate(context: vscode.ExtensionContext): void {
       await vscode.commands.executeCommand(SECONDARY_CONTAINER);
       await vscode.commands.executeCommand(`${SECONDARY_VIEW_ID}.focus`);
     }),
-    vscode.commands.registerCommand('hermesChat.newChat', () => activeSession?.clear()),
+    vscode.commands.registerCommand('hermesChat.newChat', async () => {
+      await ensureSession(context, output);
+      await activeSession?.newSession();
+    }),
+    vscode.commands.registerCommand('hermesChat.reopenSession', async () => {
+      await ensureSession(context, output);
+      await activeSession?.pickSession();
+    }),
     vscode.commands.registerCommand('hermesChat.stop', () => activeSession?.stop()),
     vscode.commands.registerCommand('hermesChat.showLogs', () => output.show()),
     vscode.commands.registerCommand('hermesChat.pickModel', async () => {
@@ -212,7 +235,10 @@ class HermesViewProvider implements vscode.WebviewViewProvider {
 }
 
 class HermesSession {
-  private readonly messages: ChatMessage[] = [];
+  private messages: ChatMessage[] = [];
+  private sessions: StoredChatSession[] = [];
+  private currentSessionId = randomId();
+  private sessionTitle = 'Nueva conversación';
   private running = false;
   private autoMode = false;
   private process: ChildProcessWithoutNullStreams | undefined;
@@ -229,8 +255,63 @@ class HermesSession {
     });
   }
 
+  async newSession(): Promise<void> {
+    await this.persistCurrentSession();
+    this.currentSessionId = randomId();
+    this.sessionTitle = 'Nueva conversación';
+    this.messages = [];
+    this.postState();
+  }
+
+  async pickSession(): Promise<void> {
+    await this.loadSessions();
+    if (!this.sessions.length) {
+      vscode.window.showInformationMessage('Hermes IDE: todavía no hay sesiones guardadas.');
+      return;
+    }
+    const selected = await vscode.window.showQuickPick(
+      this.sessions
+        .slice()
+        .sort((a, b) => b.updatedAt - a.updatedAt)
+        .map((session) => ({
+          label: session.title,
+          description: `${session.messages.length} mensajes · ${new Date(session.updatedAt).toLocaleString()}`,
+          session
+        })),
+      { title: 'Hermes IDE · reabrir sesión', placeHolder: 'Elige una conversación anterior' }
+    );
+    if (selected?.session) {
+      await this.openSession(selected.session.id);
+    }
+  }
+
+  async openSession(id: string): Promise<void> {
+    await this.loadSessions();
+    const session = this.sessions.find((item) => item.id === id);
+    if (!session) {
+      vscode.window.showWarningMessage('Hermes IDE: no encuentro esa sesión.');
+      return;
+    }
+    this.currentSessionId = session.id;
+    this.sessionTitle = session.title;
+    this.messages = [...session.messages];
+    this.postState();
+  }
+
+  async deleteSession(id: string): Promise<void> {
+    await this.loadSessions();
+    this.sessions = this.sessions.filter((item) => item.id !== id);
+    await this.writeSessions();
+    if (this.currentSessionId === id) {
+      await this.newSession();
+    } else {
+      this.postState();
+    }
+  }
+
   clear(): void {
-    this.messages.length = 0;
+    this.messages = [];
+    this.sessionTitle = 'Nueva conversación';
     this.postState();
   }
 
@@ -284,6 +365,13 @@ class HermesSession {
   private async handle(message: InboundMessage): Promise<void> {
     if (message.type === 'ready') {
       this.output.appendLine(`webview ready surface=${this.surface}`);
+      await this.loadSessions();
+      if (!this.messages.length && this.sessions.length) {
+        const last = this.sessions.slice().sort((a, b) => b.updatedAt - a.updatedAt)[0];
+        this.currentSessionId = last.id;
+        this.sessionTitle = last.title;
+        this.messages = [...last.messages];
+      }
       this.postState();
       return;
     }
@@ -292,7 +380,7 @@ class HermesSession {
       return;
     }
     if (message.type === 'clear') {
-      this.clear();
+      await this.newSession();
       return;
     }
     if (message.type === 'stop') {
@@ -316,6 +404,14 @@ class HermesSession {
       if (mention) {
         this.insertText(mention);
       }
+      return;
+    }
+    if (message.type === 'openSession' && message.sessionId) {
+      await this.openSession(message.sessionId);
+      return;
+    }
+    if (message.type === 'deleteSession' && message.sessionId) {
+      await this.deleteSession(message.sessionId);
       return;
     }
     if (message.type === 'setAutoMode') {
@@ -360,6 +456,7 @@ class HermesSession {
     } finally {
       this.running = false;
       this.process = undefined;
+      await this.persistCurrentSession();
       this.postState();
     }
   }
@@ -454,10 +551,78 @@ class HermesSession {
     });
   }
 
+  private async sessionFile(): Promise<string> {
+    const dir = path.join(getWorkspaceCwd(), '.hermes-chat');
+    await fs.mkdir(dir, { recursive: true });
+    return path.join(dir, 'sessions.json');
+  }
+
+  private sessionSummaries(): SessionSummary[] {
+    return this.sessions
+      .slice()
+      .sort((a, b) => b.updatedAt - a.updatedAt)
+      .map((session) => ({
+        id: session.id,
+        title: session.title,
+        updatedAt: session.updatedAt,
+        messageCount: session.messages.length
+      }));
+  }
+
+  private async loadSessions(): Promise<void> {
+    try {
+      const file = await this.sessionFile();
+      const raw = await fs.readFile(file, 'utf8');
+      const parsed = JSON.parse(raw) as StoredChatSession[];
+      this.sessions = Array.isArray(parsed) ? parsed.filter((item) => item?.id && Array.isArray(item.messages)) : [];
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+        this.output.appendLine(`load sessions failed: ${error instanceof Error ? error.message : String(error)}`);
+      }
+      this.sessions = [];
+    }
+  }
+
+  private async writeSessions(): Promise<void> {
+    const file = await this.sessionFile();
+    const ordered = this.sessions.slice().sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 50);
+    this.sessions = ordered;
+    await fs.writeFile(file, JSON.stringify(ordered, null, 2), 'utf8');
+  }
+
+  private inferTitle(): string {
+    const userMessage = this.messages.find((message) => message.role === 'user' && message.text.trim());
+    const raw = userMessage?.text.replace(/\s+/g, ' ').trim() || 'Nueva conversación';
+    return raw.length > 56 ? `${raw.slice(0, 55)}…` : raw;
+  }
+
+  private async persistCurrentSession(): Promise<void> {
+    if (!this.messages.length) {
+      return;
+    }
+    await this.loadSessions();
+    const now = Date.now();
+    const existing = this.sessions.find((session) => session.id === this.currentSessionId);
+    const createdAt = existing?.createdAt ?? this.messages[0]?.createdAt ?? now;
+    this.sessionTitle = this.sessionTitle === 'Nueva conversación' ? this.inferTitle() : this.sessionTitle;
+    const record: StoredChatSession = {
+      id: this.currentSessionId,
+      title: this.sessionTitle,
+      createdAt,
+      updatedAt: now,
+      messages: [...this.messages]
+    };
+    this.sessions = [record, ...this.sessions.filter((session) => session.id !== record.id)];
+    await this.writeSessions();
+  }
+
   private postState(): void {
     this.host.webview.postMessage({
       type: 'state',
       messages: this.messages,
+      sessions: this.sessionSummaries(),
+      currentSessionId: this.currentSessionId,
+      sessionTitle: this.sessionTitle,
       running: this.running,
       autoMode: this.autoMode,
       cwd: getWorkspaceCwd(),

@@ -28,12 +28,30 @@ button, textarea, input { font-family: inherit; }
 .hero h1 { color: var(--fg); margin: 0; font-size: 28px; letter-spacing: -.04em; }
 .pills { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
 .pill { border: 1px solid var(--border); border-radius: 99px; padding: 4px 8px; font-size: 11px; }
-.message { border: 1px solid var(--border); border-radius: 13px; padding: 10px 11px; margin: 0 0 10px; background: color-mix(in srgb, var(--card) 86%, transparent); white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.45; }
-.message.user { margin-left: auto; max-width: 90%; border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); background: color-mix(in srgb, var(--accent) 10%, var(--card)); }
-.message.error { border-color: var(--vscode-errorForeground); color: var(--vscode-errorForeground); }
-.role { display: flex; gap: 8px; align-items: center; font-weight: 700; font-size: 12px; margin-bottom: 6px; }
-.role img { width: 16px; height: 16px; border-radius: 50%; }
+.transcript { display: flex; flex-direction: column; gap: 18px; }
+.turn { border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, transparent); padding: 0 0 16px; line-height: 1.55; }
+.turn:last-child { border-bottom: 0; }
+.turnHeader { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; font-size: 12px; color: var(--muted); }
+.turnLabel { font-weight: 700; color: var(--fg); }
+.turn.assistant .turnLabel { color: var(--accent); }
+.turn.user .turnLabel { color: var(--vscode-symbolIcon-variableForeground, var(--fg)); }
+.turn.error { color: var(--vscode-errorForeground); }
+.turnBody { overflow-wrap: anywhere; }
+.turnBody p { margin: 0 0 10px; white-space: pre-wrap; }
+.turnBody ul { margin: 0 0 10px 18px; padding: 0; }
+.turnBody li { margin: 3px 0; }
 .time { margin-left: auto; color: var(--muted); font-weight: 400; font-size: 10px; }
+.codeBlock { margin: 10px 0 12px; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--vscode-textCodeBlock-background, color-mix(in srgb, var(--card) 70%, #000)); }
+.codeBar { min-height: 30px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 5px 8px; border-bottom: 1px solid var(--border); color: var(--muted); font-size: 11px; background: color-mix(in srgb, var(--card) 85%, transparent); }
+.codeBar button { border: 1px solid var(--border); border-radius: 6px; background: transparent; color: var(--fg); font-size: 11px; padding: 2px 7px; cursor: pointer; }
+.codeBlock pre { margin: 0; padding: 11px 12px; overflow: auto; white-space: pre; font-family: var(--vscode-editor-font-family, monospace); font-size: var(--vscode-editor-font-size, 12px); line-height: 1.45; }
+.sessionPanel { display: none; position: fixed; top: 54px; right: 10px; width: min(340px, calc(100vw - 20px)); max-height: min(420px, calc(100vh - 180px)); overflow: auto; z-index: 30; border: 1px solid var(--border); border-radius: 12px; background: var(--vscode-quickInput-background, var(--card)); box-shadow: 0 18px 45px rgba(0,0,0,.28); padding: 8px; }
+.sessionPanel.visible { display: block; }
+.sessionTitle { font-weight: 700; font-size: 12px; padding: 4px 6px 8px; }
+.sessionEmpty { color: var(--muted); font-size: 12px; padding: 8px 6px; }
+.sessionRow { display: flex; flex-direction: column; gap: 2px; width: 100%; text-align: left; border: 0; border-radius: 8px; background: transparent; color: var(--fg); padding: 8px; cursor: pointer; }
+.sessionRow:hover, .sessionRow.active { background: var(--vscode-list-hoverBackground); }
+.sessionRow small { color: var(--muted); }
 .composerWrap { position: fixed; left: 0; right: 0; bottom: 0; padding: 10px; background: linear-gradient(to top, var(--bg) 82%, transparent); }
 .composer { max-width: 860px; margin: 0 auto; border: 1px solid color-mix(in srgb, var(--accent) 50%, var(--border)); border-radius: 13px; background: var(--input); box-shadow: 0 10px 30px rgba(0,0,0,.18); overflow: visible; position: relative; }
 textarea { width: 100%; min-height: 46px; max-height: 160px; resize: vertical; border: 0; outline: 0; color: var(--vscode-input-foreground); background: transparent; padding: 12px 12px 6px; font-size: 13px; line-height: 1.45; }

@@ -5,6 +5,9 @@
 
   let state = {
     messages: [],
+    sessions: [],
+    currentSessionId: '',
+    sessionTitle: 'Nueva conversación',
     running: false,
     autoMode: false,
     workspace: 'Workspace',
@@ -44,12 +47,14 @@
           <div class="brand"><img src="${logo}" alt="Hermes"/><span>${escapeText(state.workspace || 'Hermes IDE')}</span></div>
           <div class="actions">
             <button class="iconBtn" data-action="terminal" title="Abrir Hermes en terminal">Terminal</button>
+            <button class="iconBtn" data-action="sessions" title="Sesiones guardadas">Sesiones</button>
             <button class="iconBtn" data-action="model" title="Instalar/cambiar modelo">Modelos</button>
             <button class="iconBtn" data-action="clear" title="Nuevo chat">⊕</button>
             <button class="iconBtn" data-action="settings" title="Ajustes">⚙</button>
           </div>
         </header>
         <main class="messages" id="messages"><div class="inner" id="inner"></div></main>
+        <div class="sessionPanel" id="sessionPanel"></div>
         <section class="composerWrap">
           <div class="composer" id="composer">
             <div class="slashMenu" id="slashMenu"></div>
@@ -75,6 +80,7 @@
       </div>`;
 
     renderMessages();
+    renderSessionPanel();
     renderAttachments();
     bind();
   }
@@ -94,7 +100,7 @@
       const h1 = document.createElement('h1');
       h1.textContent = 'Hermes IDE';
       const p = document.createElement('p');
-      p.textContent = 'Chat propio de Hermes para VS Code/Cursor: archivos locales, selección de código, slash commands y ejecución en el workspace.';
+      p.textContent = 'Chat propio de Hermes para VS Code/Cursor: sesiones, archivos locales, selección de código, slash commands y ejecución en el workspace.';
       const pills = document.createElement('div');
       pills.className = 'pills';
       for (const text of [`cwd: ${state.cwd || '-'}`, `cli: ${state.executable || 'hermes'}`, state.autoMode ? 'auto on' : 'auto off']) {
@@ -107,31 +113,126 @@
       inner.appendChild(hero);
     }
 
+    const transcript = document.createElement('div');
+    transcript.className = 'transcript';
     for (const message of state.messages) {
-      const el = document.createElement('div');
-      el.className = `message ${message.role}`;
-      const role = document.createElement('div');
-      role.className = 'role';
-      if (message.role === 'assistant') {
-        const img = document.createElement('img');
-        img.src = logo;
-        img.alt = 'Hermes';
-        role.appendChild(img);
-      }
+      const el = document.createElement('article');
+      el.className = `turn ${message.role}`;
+      const header = document.createElement('div');
+      header.className = 'turnHeader';
       const label = document.createElement('span');
-      label.textContent = message.role === 'assistant' ? 'Hermes' : message.role === 'user' ? 'Tú' : message.role;
+      label.className = 'turnLabel';
+      label.textContent = message.role === 'assistant' ? 'Hermes' : message.role === 'user' ? 'Vicente' : message.role;
       const time = document.createElement('span');
       time.className = 'time';
       time.textContent = new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      role.append(label, time);
-      const text = document.createElement('div');
-      text.textContent = message.text || (message.role === 'assistant' && state.running ? 'Hermes está trabajando…' : '');
-      el.append(role, text);
-      inner.appendChild(el);
+      header.append(label, time);
+      const body = document.createElement('div');
+      body.className = 'turnBody';
+      renderRichText(body, message.text || (message.role === 'assistant' && state.running ? 'Hermes está trabajando…' : ''));
+      el.append(header, body);
+      transcript.appendChild(el);
     }
+    inner.appendChild(transcript);
 
     const messages = document.getElementById('messages');
     if (messages) messages.scrollTop = messages.scrollHeight;
+  }
+
+  function renderRichText(container, text) {
+    const parts = String(text || '').split(/```/g);
+    parts.forEach((part, index) => {
+      if (index % 2 === 1) {
+        const firstNewline = part.indexOf('\n');
+        const lang = firstNewline > -1 ? part.slice(0, firstNewline).trim() : '';
+        const code = firstNewline > -1 ? part.slice(firstNewline + 1) : part;
+        const block = document.createElement('div');
+        block.className = 'codeBlock';
+        const bar = document.createElement('div');
+        bar.className = 'codeBar';
+        const langEl = document.createElement('span');
+        langEl.textContent = lang || 'code';
+        const copy = document.createElement('button');
+        copy.textContent = 'Copy';
+        copy.addEventListener('click', () => navigator.clipboard?.writeText(code));
+        bar.append(langEl, copy);
+        const pre = document.createElement('pre');
+        const codeEl = document.createElement('code');
+        codeEl.textContent = code.replace(/^\n|\n$/g, '');
+        pre.appendChild(codeEl);
+        block.append(bar, pre);
+        container.appendChild(block);
+        return;
+      }
+      renderParagraphs(container, part);
+    });
+  }
+
+  function renderParagraphs(container, text) {
+    const lines = String(text || '').split('\n');
+    let list = null;
+    let para = [];
+    const flushPara = () => {
+      if (!para.length) return;
+      const p = document.createElement('p');
+      p.textContent = para.join('\n').trim();
+      if (p.textContent) container.appendChild(p);
+      para = [];
+    };
+    const flushList = () => { list = null; };
+    for (const line of lines) {
+      const bullet = line.match(/^\s*[-*•]\s+(.+)$/);
+      if (bullet) {
+        flushPara();
+        if (!list) {
+          list = document.createElement('ul');
+          container.appendChild(list);
+        }
+        const li = document.createElement('li');
+        li.textContent = bullet[1];
+        list.appendChild(li);
+        continue;
+      }
+      if (!line.trim()) {
+        flushPara();
+        flushList();
+        continue;
+      }
+      para.push(line);
+    }
+    flushPara();
+  }
+
+  function renderSessionPanel() {
+    const panel = document.getElementById('sessionPanel');
+    if (!panel) return;
+    panel.innerHTML = '';
+    const list = state.sessions || [];
+    const title = document.createElement('div');
+    title.className = 'sessionTitle';
+    title.textContent = 'Sesiones recientes';
+    panel.appendChild(title);
+    if (!list.length) {
+      const empty = document.createElement('div');
+      empty.className = 'sessionEmpty';
+      empty.textContent = 'Aún no hay conversaciones guardadas.';
+      panel.appendChild(empty);
+      return;
+    }
+    list.slice(0, 12).forEach((session) => {
+      const row = document.createElement('button');
+      row.className = `sessionRow ${session.id === state.currentSessionId ? 'active' : ''}`;
+      row.addEventListener('click', () => {
+        hideSessions();
+        post('openSession', { sessionId: session.id });
+      });
+      const name = document.createElement('span');
+      name.textContent = session.title || 'Sin título';
+      const meta = document.createElement('small');
+      meta.textContent = `${session.messageCount || 0} mensajes · ${new Date(session.updatedAt).toLocaleDateString()}`;
+      row.append(name, meta);
+      panel.appendChild(row);
+    });
   }
 
   function renderAttachments() {
@@ -217,6 +318,7 @@
       if (action === 'settings') post('openSettings');
       if (action === 'model') post('pickModel');
       if (action === 'terminal') post('openTerminal');
+      if (action === 'sessions') toggleSessions();
       if (action === 'mention') post('insertAtMention');
       if (action === 'attach') document.getElementById('fileInput').click();
       if (action === 'slash') {
@@ -309,6 +411,14 @@
   function hideSlashMenu() {
     const menu = document.getElementById('slashMenu');
     if (menu) menu.classList.remove('visible');
+  }
+
+  function toggleSessions() {
+    document.getElementById('sessionPanel')?.classList.toggle('visible');
+  }
+
+  function hideSessions() {
+    document.getElementById('sessionPanel')?.classList.remove('visible');
   }
 
   function insertTextAtCursor(text) {

@@ -2,7 +2,7 @@
   "name": "hermes-chat-vscode",
   "displayName": "Hermes IDE",
   "description": "Chat with Hermes Agent from VS Code or Cursor. MVP extension that sends prompts, selected code and pasted/dropped files to the Hermes CLI.",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "publisher": "hermes-agent",
   "license": "MIT",
   "repository": {
@@ -21,6 +21,7 @@
     "onCommand:hermesChat.openSidebar",
     "onCommand:hermesChat.openSecondarySidebar",
     "onCommand:hermesChat.newChat",
+    "onCommand:hermesChat.reopenSession",
     "onCommand:hermesChat.stop",
     "onCommand:hermesChat.status",
     "onCommand:hermesChat.commands",
@@ -126,6 +127,11 @@
         "category": "Hermes IDE"
       },
       {
+        "command": "hermesChat.reopenSession",
+        "title": "Reopen Session",
+        "category": "Hermes IDE"
+      },
+      {
         "command": "hermesChat.stop",
         "title": "Stop Hermes",
         "category": "Hermes IDE"
@@ -175,6 +181,11 @@
           "command": "hermesChat.newChat",
           "when": "view == hermesIde.chatView || view == hermesIde.secondaryChatView",
           "group": "navigation@1"
+        },
+        {
+          "command": "hermesChat.reopenSession",
+          "when": "view == hermesIde.chatView || view == hermesIde.secondaryChatView",
+          "group": "navigation@1.5"
         },
         {
           "command": "hermesChat.stop",
