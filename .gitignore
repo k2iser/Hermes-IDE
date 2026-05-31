@@ -1,6 +1,7 @@
 node_modules/
 dist/
 *.vsix
+!media/**
 .hermes-chat/
 .vscode-test/
 .DS_Store

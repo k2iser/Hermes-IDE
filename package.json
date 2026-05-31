@@ -16,13 +16,31 @@
     "Other"
   ],
   "activationEvents": [
-    "onCommand:hermesChat.open"
+    "onCommand:hermesChat.open",
+    "onView:hermesIde.chatView"
   ],
   "main": "./dist/extension.js",
   "extensionKind": [
     "workspace"
   ],
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "hermesIde",
+          "title": "Hermes IDE",
+          "icon": "media/hermes-h.svg"
+        }
+      ]
+    },
+    "views": {
+      "hermesIde": [
+        {
+          "id": "hermesIde.chatView",
+          "name": "Chat"
+        }
+      ]
+    },
     "commands": [
       {
         "command": "hermesChat.open",
