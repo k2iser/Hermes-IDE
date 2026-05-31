@@ -2,7 +2,7 @@
   "name": "hermes-chat-vscode",
   "displayName": "Hermes IDE",
   "description": "Chat with Hermes Agent from VS Code or Cursor. MVP extension that sends prompts, selected code and pasted/dropped files to the Hermes CLI.",
-  "version": "0.0.4",
+  "version": "0.0.7",
   "publisher": "hermes-agent",
   "license": "MIT",
   "repository": {
@@ -17,6 +17,11 @@
   ],
   "activationEvents": [
     "onCommand:hermesChat.open",
+    "onCommand:hermesChat.openSidebar",
+    "onCommand:hermesChat.newChat",
+    "onCommand:hermesChat.stop",
+    "onCommand:hermesChat.status",
+    "onCommand:hermesChat.commands",
     "onView:hermesIde.chatView"
   ],
   "main": "./dist/extension.js",
@@ -48,6 +53,31 @@
         "command": "hermesChat.open",
         "title": "Open Chat",
         "category": "Hermes IDE"
+      },
+      {
+        "command": "hermesChat.openSidebar",
+        "title": "Open Sidebar Chat",
+        "category": "Hermes IDE"
+      },
+      {
+        "command": "hermesChat.newChat",
+        "title": "New Chat",
+        "category": "Hermes IDE"
+      },
+      {
+        "command": "hermesChat.stop",
+        "title": "Stop Hermes",
+        "category": "Hermes IDE"
+      },
+      {
+        "command": "hermesChat.status",
+        "title": "Run /status",
+        "category": "Hermes IDE"
+      },
+      {
+        "command": "hermesChat.commands",
+        "title": "Insert /help",
+        "category": "Hermes IDE"
       }
     ],
     "configuration": {
@@ -77,6 +107,25 @@
           "description": "Maximum pasted/dropped attachment size saved by the extension, in bytes."
         }
       }
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "hermesChat.newChat",
+          "when": "view == hermesIde.chatView",
+          "group": "navigation@1"
+        },
+        {
+          "command": "hermesChat.stop",
+          "when": "view == hermesIde.chatView",
+          "group": "navigation@2"
+        },
+        {
+          "command": "hermesChat.commands",
+          "when": "view == hermesIde.chatView",
+          "group": "navigation@3"
+        }
+      ]
     }
   },
   "scripts": {
@@ -89,5 +138,6 @@
     "@types/vscode": "^1.90.0",
     "@vscode/vsce": "^3.9.1",
     "typescript": "^6.0.3"
-  }
+  },
+  "icon": "media/hermes-logo.png"
 }
