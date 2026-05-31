@@ -26,7 +26,8 @@
     "commands": [
       {
         "command": "hermesChat.open",
-        "title": "Hermes Chat: Open"
+        "title": "Open Chat",
+        "category": "Hermes IDE"
       }
     ],
     "configuration": {
